@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<base target="_top">
+<title>Consignment Hisab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{
+  --paper:#F2F4F0; --surface:#FFFFFF; --ink:#16211C; --ink2:#5C6A63; --ink3:#8A968F;
+  --rule:#D7DDD6; --rule2:#EBEFE9;
+  --grain:#A8731A; --grain-soft:#FBF2DF;
+  --less:#A32B26; --less-soft:#FBEDEC;
+  --add:#1F6B4A; --add-soft:#E9F3EE;
+  --pay:#2A4E86; --pay-soft:#EAF0F9;
+  --rail:224px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:14.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.num,.money,input[type=number],td.n,th.n{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+.shell{display:flex;min-height:100vh}
+.rail{width:var(--rail);flex:0 0 var(--rail);background:var(--ink);color:#E6EBE7;
+  display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.12)}
+.brand b{display:block;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.brand span{display:block;font-size:11.5px;color:#93A39A;margin-top:3px;line-height:1.35}
+.nav{padding:10px;flex:1;overflow:auto}
+.nav button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:0;
+  color:#BFCBC4;font:inherit;font-size:14px;padding:9px 10px;border-radius:6px;cursor:pointer}
+.nav button:hover{background:rgba(255,255,255,.07);color:#fff}
+.nav button[aria-current=true]{background:var(--grain);color:#1A1304;font-weight:600}
+.nav .glyph{width:18px;text-align:center;opacity:.9}
+.railfoot{padding:12px 18px;border-top:1px solid rgba(255,255,255,.12);font-size:11.5px;color:#8A9A91}
+main{flex:1;min-width:0;padding:26px 30px 70px}
+h1{font-size:22px;font-weight:600;letter-spacing:-.015em;margin:0 0 2px}
+.sub{color:var(--ink2);font-size:13px;margin:0 0 20px}
+.view{display:none}
+.view.on{display:block}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:8px;margin-bottom:18px}
+.panel>header{padding:13px 16px;border-bottom:1px solid var(--rule2);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.panel>header h2{margin:0;font-size:14.5px;font-weight:600}
+.panel>header .hint{font-size:12.5px;color:var(--ink3)}
+.pad{padding:16px}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--surface);margin-bottom:18px}
+.stat{padding:14px 16px;border-right:1px solid var(--rule2)}
+.stat:last-child{border-right:0}
+.stat .k{font-size:12px;color:var(--ink2)}
+.stat .v{font-size:19px;font-weight:600;margin-top:3px;letter-spacing:-.02em}
+.stat.due .v{color:var(--less)}
+.stat.paid .v{color:var(--add)}
+
+.grid{display:grid;gap:13px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+label{display:block;font-size:12.5px;color:var(--ink2);margin-bottom:4px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--rule);border-radius:6px;background:#fff;font:inherit;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--grain);outline-offset:-1px;border-color:var(--grain)}
+input[readonly]{background:var(--rule2);color:var(--ink2)}
+textarea{min-height:62px;resize:vertical}
+
+/* select + add */
+.withadd{display:flex;gap:6px}
+.withadd select,.withadd input{min-width:0}
+.addbtn{flex:0 0 36px;width:36px;border:1px solid var(--grain);background:var(--grain-soft);color:var(--grain);
+  border-radius:6px;font-size:19px;line-height:1;cursor:pointer;font-family:inherit}
+.addbtn:hover{background:var(--grain);color:#1A1304}
+.addbtn:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+
+.row-actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+button.btn{padding:8px 15px;border-radius:6px;border:1px solid var(--ink);background:var(--ink);color:#fff;font:inherit;font-weight:500;cursor:pointer}
+button.btn:hover{background:#0D1612}
+button.btn.ghost{background:#fff;color:var(--ink)}
+button.btn.ghost:hover{background:var(--rule2)}
+button.btn.warn{background:#fff;color:var(--less);border-color:var(--less)}
+button.btn.warn:hover{background:var(--less-soft)}
+button.btn.gold{background:var(--grain);border-color:var(--grain);color:#1A1304}
+button.btn.gold:hover{filter:brightness(1.06)}
+button.btn[disabled]{opacity:.5;cursor:not-allowed}
+button.mini{padding:3px 8px;font-size:12px;border-radius:5px;border:1px solid var(--rule);background:#fff;cursor:pointer;font:inherit}
+button.mini:hover{background:var(--rule2)}
+button.mini.x{color:var(--less);border-color:#E7C7C5}
+
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{padding:8px 11px;text-align:left;border-bottom:1px solid var(--rule2);vertical-align:top}
+th{font-size:12px;color:var(--ink2);font-weight:600;background:#FAFBF9;white-space:nowrap;position:sticky;top:0}
+td.n,th.n{text-align:right;white-space:nowrap}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--grain-soft)}
+tr.tot td{border-top:2px solid var(--ink);border-bottom:0;font-weight:600;background:#FAFBF9}
+.tag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:11.5px;font-weight:500;white-space:nowrap}
+.tag.less{background:var(--less-soft);color:var(--less)}
+.tag.add{background:var(--add-soft);color:var(--add)}
+.tag.pay{background:var(--pay-soft);color:var(--pay)}
+.tag.open{background:var(--grain-soft);color:var(--grain)}
+.tag.closed{background:var(--rule2);color:var(--ink2)}
+.empty{padding:34px 16px;text-align:center;color:var(--ink2);font-size:13.5px}
+.empty b{display:block;color:var(--ink);font-weight:600;margin-bottom:4px}
+
+.plate{display:inline-block;background:#F6E9A8;border:2.5px solid var(--ink);border-radius:6px;
+  padding:6px 14px;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:23px;
+  letter-spacing:.09em;color:#11190F;box-shadow:2px 2px 0 var(--ink)}
+.plate.sm{font-size:14px;padding:2px 8px;border-width:1.5px;box-shadow:1px 1px 0 var(--ink);letter-spacing:.06em}
+.consbar{display:flex;gap:18px;align-items:center;flex-wrap:wrap;padding:18px 16px;border-bottom:1px solid var(--rule2)}
+.consbar .no{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600}
+.consbar .meta{color:var(--ink2);font-size:13px}
+.metagrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:1px;background:var(--rule2)}
+.metagrid div{background:#fff;padding:10px 14px}
+.metagrid .k{font-size:11.5px;color:var(--ink3)}
+.metagrid .v{font-size:14px;font-weight:500;margin-top:2px}
+
+.settle{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--rule2);border-top:1px solid var(--rule)}
+.settle div{background:#fff;padding:13px 15px}
+.settle .k{font-size:11.5px;color:var(--ink2)}
+.settle .v{font-family:"IBM Plex Mono",monospace;font-size:17px;font-weight:600;margin-top:3px}
+.settle .net{background:var(--ink);color:#fff}
+.settle .net .k{color:#9FB0A7}
+.settle .bal{background:var(--grain-soft)}
+.settle .bal .v{color:var(--grain)}
+
+.tabs{display:flex;gap:6px;margin-bottom:13px;flex-wrap:wrap}
+.tabs button{padding:6px 13px;border:1px solid var(--rule);background:#fff;border-radius:6px;font:inherit;font-size:13px;cursor:pointer}
+.tabs button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.calcnote{font-size:12.5px;color:var(--ink2);margin-top:7px}
+.calcnote b{color:var(--grain)}
+
+/* dialog */
+.scrim{position:fixed;inset:0;background:rgba(22,33,28,.42);display:none;align-items:center;justify-content:center;z-index:70;padding:18px}
+.scrim.on{display:flex}
+.dialog{background:#fff;border-radius:10px;width:100%;max-width:520px;border:1px solid var(--rule);box-shadow:0 18px 46px rgba(22,33,28,.22);overflow:hidden}
+.dialog>header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:var(--ink);color:#fff}
+.dialog>header h3{margin:0;font-size:15px;font-weight:600}
+.dialog>header p{margin:2px 0 0;font-size:12px;color:#9FB0A7}
+.dialog>footer{display:flex;justify-content:flex-end;gap:9px;padding:13px 16px;border-top:1px solid var(--rule2);background:#FAFBF9}
+.dlgclose{background:none;border:0;color:#9FB0A7;font-size:20px;cursor:pointer;line-height:1;padding:0 4px}
+.dlgclose:hover{color:#fff}
+
+.toast{position:fixed;right:18px;bottom:18px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:7px;font-size:13.5px;max-width:360px;opacity:0;transform:translateY(8px);transition:.18s;z-index:90;pointer-events:none}
+.toast.on{opacity:1;transform:none}
+.toast.bad{background:var(--less)}
+.busy{position:fixed;inset:0;background:rgba(242,244,240,.65);display:none;align-items:center;justify-content:center;z-index:80;font-size:14px}
+.busy.on{display:flex}
+.banner{background:var(--grain-soft);border:1px solid #E8D4A4;border-radius:7px;padding:11px 14px;font-size:13px;margin-bottom:16px}
+.filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;align-items:end}
+
+@media(max-width:900px){
+  .shell{flex-direction:column}
+  .rail{width:100%;height:auto;position:static;flex:none}
+  .nav{display:flex;gap:4px;overflow-x:auto;padding:8px}
+  .nav button{width:auto;white-space:nowrap}
+  .railfoot{display:none}
+  main{padding:18px 14px 60px}
+  .g3,.g4{grid-template-columns:repeat(2,1fr)}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media print{.rail,.noprint{display:none!important}body{background:#fff}main{padding:0}.panel{border:0}.view{display:none!important}.view.on{display:block!important}}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="rail noprint">
+    <div class="brand"><b>Consignment Hisab</b><span id="brandOrg">Loading…</span></div>
+    <nav class="nav" id="nav">
+      <button data-view="dash" aria-current="true"><span class="glyph">▦</span>Dashboard</button>
+      <button data-view="new"><span class="glyph">＋</span>New consignment</button>
+      <button data-view="ledger"><span class="glyph">☰</span>Consignment ledger</button>
+      <button data-view="search"><span class="glyph">⌕</span>Search</button>
+      <button data-view="report"><span class="glyph">Σ</span>Consolidated</button>
+      <button data-view="masters"><span class="glyph">◈</span>Vehicles &amp; parties</button>
+    </nav>
+    <div class="railfoot" id="railFoot">Google Sheet backend</div>
+  </aside>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section class="view on" id="view-dash">
+      <h1>Dashboard</h1>
+      <p class="sub">Every truck that came in, what it earned, and what is still unpaid.</p>
+      <div id="demoBanner" class="banner" style="display:none">
+        Preview mode — nothing is being saved and Excel export is off. Deploy inside your Google Sheet's Apps Script project to go live.
+      </div>
+      <div class="stats" id="dashStats"></div>
+      <div class="panel">
+        <header><h2>Recent consignments</h2><button class="btn ghost noprint" data-view="new">Enter a new truck</button></header>
+        <div class="tablewrap" id="recentWrap"></div>
+      </div>
+    </section>
+
+    <!-- NEW / EDIT -->
+    <section class="view" id="view-new">
+      <h1 id="newTitle">New consignment</h1>
+      <p class="sub">Vehicle number, weight and rate. The amount works itself out.</p>
+      <div class="panel"><div class="pad">
+        <div class="grid g4">
+          <div><label for="f_no">Consignment number</label><input id="f_no" class="num" placeholder="auto"></div>
+          <div><label for="f_date">Date</label><input id="f_date" type="date"></div>
+          <div><label for="f_veh">Vehicle number</label>
+            <div class="withadd"><select id="f_veh"></select>
+              <button class="addbtn" data-add="vehicle" title="Add a vehicle" aria-label="Add a vehicle">+</button></div></div>
+          <div><label for="f_driver">Driver</label><input id="f_driver" placeholder="optional"></div>
+        </div>
+        <div class="grid g4" style="margin-top:13px">
+          <div><label for="f_ptype">Party is</label>
+            <select id="f_ptype"><option>Supplier</option><option>Buyer</option><option>Transporter</option><option>Own</option></select></div>
+          <div><label for="f_party">Party name</label>
+            <div class="withadd"><select id="f_party"></select>
+              <button class="addbtn" data-add="party" title="Add a party" aria-label="Add a party">+</button></div></div>
+          <div><label for="f_cmd">Commodity</label>
+            <div class="withadd"><select id="f_cmd"></select>
+              <button class="addbtn" data-add="commodity" title="Add a commodity" aria-label="Add a commodity">+</button></div></div>
+          <div><label for="f_status">Status</label><select id="f_status"><option>Open</option><option>Closed</option></select></div>
+        </div>
+        <div class="grid g4" style="margin-top:13px">
+          <div><label for="f_from">Loaded at</label><input id="f_from" placeholder="Saharsa"></div>
+          <div><label for="f_to">Unloaded at</label><input id="f_to" placeholder="Madhyamgram"></div>
+          <div><label for="f_unit">Unit</label><select id="f_unit"><option>Qtl</option><option>MT</option><option>Kg</option><option>Bag</option></select></div>
+          <div><label for="f_basis">Bill on</label><select id="f_basis"><option>Dispatch weight</option><option>Received weight</option></select></div>
+        </div>
+        <div class="grid g4" style="margin-top:13px">
+          <div><label for="f_dq">Dispatch quantity</label><input id="f_dq" type="number" step="0.001" min="0"></div>
+          <div><label for="f_rq">Received quantity</label><input id="f_rq" type="number" step="0.001" min="0" placeholder="blank = same"></div>
+          <div><label for="f_rate">Rate per unit</label><input id="f_rate" type="number" step="0.01" min="0"></div>
+          <div><label for="f_basic">Basic amount</label><input id="f_basic" readonly class="num"></div>
+        </div>
+        <div style="margin-top:13px"><label for="f_rem">Remarks</label><textarea id="f_rem" placeholder="Bilty no., agreed moisture %, anything worth remembering"></textarea></div>
+        <p class="calcnote" id="newCalc"></p>
+        <div class="row-actions" style="margin-top:14px">
+          <button class="btn gold" id="btnSaveCons">Save consignment</button>
+          <button class="btn ghost" id="btnResetCons">Clear form</button>
+          <span id="editingNote" style="font-size:12.5px;color:var(--ink2)"></span>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- LEDGER -->
+    <section class="view" id="view-ledger">
+      <div id="ledgerEmpty" class="panel"><div class="empty"><b>No consignment open</b>Search for a consignment number or vehicle, or enter a new one.</div></div>
+      <div id="ledgerBody" style="display:none">
+        <div class="panel">
+          <div class="consbar">
+            <span class="plate" id="lg_plate">—</span>
+            <div><div class="no" id="lg_no">—</div><div class="meta" id="lg_meta">—</div></div>
+            <div style="margin-left:auto" class="row-actions noprint">
+              <button class="btn gold" id="btnPdfStmt">Download PDF</button>
+              <button class="btn ghost" id="btnEditCons">Edit details</button>
+              <button class="btn ghost" id="btnPrint">Print</button>
+              <button class="btn warn" id="btnDelCons">Delete</button>
+            </div>
+          </div>
+          <div class="metagrid" id="lg_grid"></div>
+          <div class="settle" id="lg_settle"></div>
+        </div>
+        <div class="panel">
+          <header><h2>Running account</h2><span class="hint">Deductions reduce the balance, receipts settle it.</span></header>
+          <div class="tablewrap" id="lg_table"></div>
+        </div>
+        <div class="panel noprint">
+          <header><h2>Add a line</h2><span class="hint" id="quickHint"></span></header>
+          <div class="pad">
+            <div class="tabs" id="natureTabs">
+              <button data-nature="LESS" aria-pressed="true">Deduction</button>
+              <button data-nature="ADD" aria-pressed="false">Addition</button>
+              <button data-nature="PAYMENT" aria-pressed="false">Payment / receipt</button>
+            </div>
+            <div class="grid g4">
+              <div><label for="e_date">Date</label><input id="e_date" type="date"></div>
+              <div><label for="e_head">Head</label><select id="e_head"></select></div>
+              <div><label for="e_qty">Quantity</label><input id="e_qty" type="number" step="0.001" min="0" placeholder="e.g. rejected qtl"></div>
+              <div><label for="e_rate">Rate</label><input id="e_rate" type="number" step="0.01" min="0" placeholder="per unit"></div>
+            </div>
+            <div class="grid g4" style="margin-top:13px">
+              <div><label for="e_amt">Amount</label><input id="e_amt" type="number" step="0.01" min="0" class="num"></div>
+              <div style="grid-column:span 2"><label for="e_desc">Description</label><input id="e_desc" placeholder="12 bags rejected, black grain"></div>
+              <div><label for="e_ref">Reference</label><input id="e_ref" placeholder="UTR / voucher no."></div>
+            </div>
+            <p class="calcnote" id="entryCalc"></p>
+            <div class="row-actions" style="margin-top:13px">
+              <button class="btn gold" id="btnSaveEntry">Add line</button>
+              <button class="btn ghost" id="btnClearEntry">Clear</button>
+              <button class="btn ghost" id="btnQuickShortage">Fill weight shortage</button>
+              <span id="entryEditNote" style="font-size:12.5px;color:var(--ink2)"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEARCH -->
+    <section class="view" id="view-search">
+      <h1>Search</h1>
+      <p class="sub">Find any past consignment by number, truck, party or date.</p>
+      <div class="panel"><div class="pad">
+        <div class="filters">
+          <div style="grid-column:span 2"><label for="s_q">Anything</label><input id="s_q" placeholder="CN/26-27/0042, WB23F4471, Ramesh Traders"></div>
+          <div><label for="s_party">Party</label><select id="s_party"></select></div>
+          <div><label for="s_from">From date</label><input id="s_from" type="date"></div>
+          <div><label for="s_to">To date</label><input id="s_to" type="date"></div>
+          <div><label for="s_status">Status</label><select id="s_status"><option value="">All</option><option>Open</option><option>Closed</option></select></div>
+          <div><label for="s_due">Balance</label><select id="s_due"><option value="">All</option><option value="1">Only unpaid</option></select></div>
+          <div><button class="btn" id="btnSearch">Search</button></div>
+        </div>
+      </div></div>
+      <div class="stats" id="searchStats" style="display:none"></div>
+      <div class="panel"><div class="tablewrap" id="searchWrap"><div class="empty"><b>Nothing searched yet</b>Set a filter and press Search.</div></div></div>
+    </section>
+
+    <!-- CONSOLIDATED -->
+    <section class="view" id="view-report">
+      <h1>Consolidated position</h1>
+      <p class="sub">Consignment-wise picture across a period, with deduction heads broken out.</p>
+      <div class="panel noprint"><div class="pad">
+        <div class="filters">
+          <div><label for="r_from">From date</label><input id="r_from" type="date"></div>
+          <div><label for="r_to">To date</label><input id="r_to" type="date"></div>
+          <div><label for="r_veh">Vehicle</label><select id="r_veh"></select></div>
+          <div><label for="r_party">Party</label><select id="r_party"></select></div>
+          <div><label for="r_group">Group by</label>
+            <select id="r_group"><option value="none">No grouping</option><option value="vehicle">Vehicle</option><option value="party">Party</option><option value="commodity">Commodity</option><option value="month">Month</option></select></div>
+          <div><button class="btn" id="btnReport">Build report</button></div>
+        </div>
+        <div class="row-actions" style="margin-top:14px">
+          <button class="btn gold" id="btnPdfRep" disabled>Download PDF</button>
+          <button class="btn gold" id="btnXlsx" disabled>Download Excel</button>
+          <button class="btn ghost" id="btnCsv" disabled>Plain CSV</button>
+          <span class="calcnote" id="repNote" style="margin:0"></span>
+        </div>
+      </div></div>
+      <div class="stats" id="repStats" style="display:none"></div>
+      <div class="panel" id="repGroupPanel" style="display:none">
+        <header><h2 id="repGroupTitle">Grouped summary</h2></header>
+        <div class="tablewrap" id="repGroupWrap"></div>
+      </div>
+      <div class="panel">
+        <header><h2>Consignment-wise</h2></header>
+        <div class="tablewrap" id="repWrap"><div class="empty"><b>Report not built</b>Choose a period and press Build report.</div></div>
+      </div>
+      <div class="panel">
+        <header><h2>Where the money went</h2><span class="hint">Deduction, addition and receipt heads for the same period</span></header>
+        <div class="tablewrap" id="repHeadWrap"><div class="empty">Build the report to see head-wise totals.</div></div>
+      </div>
+    </section>
+
+    <!-- MASTERS -->
+    <section class="view" id="view-masters">
+      <h1>Vehicles &amp; parties</h1>
+      <p class="sub">Add here, or use the + button beside any dropdown while entering a consignment.</p>
+      <div class="tabs" id="masterTabs">
+        <button data-kind="vehicle" aria-pressed="true">Vehicles</button>
+        <button data-kind="party" aria-pressed="false">Parties</button>
+        <button data-kind="commodity" aria-pressed="false">Commodities</button>
+        <button data-kind="head" aria-pressed="false">Heads</button>
+      </div>
+      <div class="panel">
+        <header><h2 id="masterTitle">Vehicles</h2></header>
+        <div class="pad" id="masterForm"></div>
+        <div class="tablewrap" id="masterWrap"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- quick-add dialog -->
+<div class="scrim" id="scrim" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+  <div class="dialog">
+    <header>
+      <div><h3 id="dlgTitle">Add party</h3><p id="dlgSub">Saved straight to the sheet</p></div>
+      <button class="dlgclose" id="dlgX" aria-label="Close">×</button>
+    </header>
+    <div class="pad" id="dlgBody"></div>
+    <footer><button class="btn ghost" id="dlgCancel">Cancel</button><button class="btn gold" id="dlgSave">Save and use</button></footer>
+  </div>
+</div>
+
+<div class="busy" id="busy">Working…</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==========================================================================
+   API BRIDGE
+   ========================================================================== */
+/* ---------------------------------------------------------------------------
+   WHERE IS THE BACKEND?
+   Leave both blank when this file lives INSIDE the Apps Script project
+   (google.script.run is used automatically).
+   Fill them in when you host this page yourself (Cloudflare Pages, Netlify,
+   GitHub Pages, or even a local file) — then it talks to Apps Script over HTTP
+   and the "created by a Google Apps Script user" banner never appears.
+   API_TOKEN must match the one in Code.gs.
+   --------------------------------------------------------------------------- */
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyIvVL2JCbBajMOmezu3Riz3IbqAnTaHQFbbYbB6V_tZhpMdQoDuSRMKSa4SsQuYBlWjg/exec';
+var API_TOKEN  = 'ch_90fe5e1c24aab2211a60';   // must match API_TOKEN in Code.gs
+
+var GOOGLE_LIVE = !!(window.google && google.script && google.script.run);
+var REMOTE_LIVE = !GOOGLE_LIVE && !!SCRIPT_URL;
+var LIVE = GOOGLE_LIVE || REMOTE_LIVE;
+function api(fn){
+  var args = Array.prototype.slice.call(arguments,1);
+  return new Promise(function(res,rej){
+    if(GOOGLE_LIVE){
+      google.script.run.withSuccessHandler(res).withFailureHandler(rej)[fn].apply(null,args);
+    } else if(REMOTE_LIVE){
+      fetch(SCRIPT_URL, {
+        method:'POST',
+        redirect:'follow',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},   // keeps it a simple request — no CORS preflight
+        body:JSON.stringify({token:API_TOKEN,fn:fn,args:args})
+      }).then(function(r){
+        return r.text().then(function(t){
+          var j;
+          try{ j=JSON.parse(t); }catch(e){ throw new Error('API returned an invalid response. Check the deployment URL.'); }
+          if(!j.ok) throw new Error(j.error || ('API error '+r.status));
+          return j.result;
+        });
+      }).then(res).catch(rej);
+    } else {
+      try{ res(DEMO[fn].apply(null,args)); }catch(e){ rej(e); }
+    }
+  });
+}
+
+var DEMO = (function(){
+  var cons=[], ent=[], par=[], veh=[];
+  var heads=[['Rejection / Chhatni','LESS'],['Weight shortage / Kanta','LESS'],['Quality cut — moisture','LESS'],
+    ['Quality cut — damage','LESS'],['Freight / Bhada','LESS'],['Labour / Hamali','LESS'],['Mandi fee / Cess','LESS'],
+    ['Commission / Dalali','LESS'],['Bardana / Bag cost','LESS'],['Other deduction','LESS'],
+    ['Rate difference','ADD'],['Bonus / Incentive','ADD'],['Other addition','ADD'],
+    ['Cash','PAYMENT'],['Bank transfer / NEFT','PAYMENT'],['RTGS','PAYMENT'],['UPI','PAYMENT'],['Cheque','PAYMENT']]
+    .map(function(h){return {head:h[0],nature:h[1],active:'Yes'};});
+  var cmd=[{commodity:'Maize / Makai',default_unit:'Qtl',active:'Yes'},{commodity:'Wheat / Gehu',default_unit:'Qtl',active:'Yes'},{commodity:'Gram / Chana',default_unit:'Qtl',active:'Yes'}];
+  function nn(v){var x=parseFloat(v);return isNaN(x)?0:x;}
+  function r2(v){return Math.round(nn(v)*100)/100;}
+  function tot(c,es){var dq=nn(c.dispatch_qty),rq=String(c.received_qty).trim()===''?dq:nn(c.received_qty);
+    var q=c.billing_basis==='Received weight'?rq:dq,basic=r2(q*nn(c.rate)),a=0,l=0,p=0;
+    es.forEach(function(e){if(e.nature==='ADD')a+=nn(e.amount);else if(e.nature==='PAYMENT')p+=nn(e.amount);else l+=nn(e.amount);});
+    var net=r2(basic+a-l);
+    return {billing_qty:q,shortage_qty:Math.round((dq-rq)*1000)/1000,basic_amount:basic,total_add:r2(a),total_less:r2(l),net_payable:net,total_paid:r2(p),balance:r2(net-p)};}
+  function apply(c){var t=tot(c,ent.filter(function(e){return e.consignment_no===c.consignment_no;}));for(var k in t)c[k]=t[k];}
+  function dash(rows){var d={count:0,open:0,closed:0,basic:0,add:0,less:0,net:0,paid:0,balance:0,qty:0};
+    rows.forEach(function(c){d.count++;c.status==='Closed'?d.closed++:d.open++;d.basic+=nn(c.basic_amount);d.add+=nn(c.total_add);
+      d.less+=nn(c.total_less);d.net+=nn(c.net_payable);d.paid+=nn(c.total_paid);d.balance+=nn(c.balance);
+      d.qty+=nn(c.billing_basis==='Received weight'?(c.received_qty||c.dispatch_qty):c.dispatch_qty);});return d;}
+  function fy(ds){var d=new Date(ds||Date.now());var y=d.getFullYear(),m=d.getMonth()+1,s=m>=4?y:y-1;return String(s).slice(2)+'-'+String(s+1).slice(2);}
+  function nextNo(ds){var p='CN/'+fy(ds)+'/',mx=0;cons.forEach(function(c){if(c.consignment_no.indexOf(p)===0){var x=parseInt(c.consignment_no.slice(p.length),10);if(x>mx)mx=x;}});return p+('0000'+(mx+1)).slice(-4);}
+  function stmt(no){var c=cons.filter(function(x){return x.consignment_no===no;})[0];
+    var es=ent.filter(function(e){return e.consignment_no===no;});
+    return {consignment:c,entries:es,totals:tot(c,es),org:{name:'Preview mode',sub:''}};}
+  function search(f){f=f||{};var q=(f.q||'').toLowerCase();
+    var rows=cons.filter(function(c){
+      if(f.from&&c.cons_date<f.from)return false; if(f.to&&c.cons_date>f.to)return false;
+      if(f.status&&c.status!==f.status)return false; if(f.onlyDue&&nn(c.balance)<=0)return false;
+      if(f.party&&c.party_name!==f.party)return false;
+      if(f.vehicle&&(c.vehicle_no||'').toUpperCase().indexOf(f.vehicle.toUpperCase())<0)return false;
+      if(q&&[c.consignment_no,c.vehicle_no,c.party_name,c.commodity,c.remarks].join(' ').toLowerCase().indexOf(q)<0)return false;
+      return true;}).slice().reverse();
+    return {rows:rows,summary:dash(rows)};}
+  return {
+    getBootstrap:function(){return {cfg:{appName:'Consignment Hisab',org:'Preview mode — not connected',orgSub:'Deploy inside Google Sheets to save',today:new Date().toISOString().slice(0,10)},
+      heads:heads,commodities:cmd,vehicles:veh,parties:par,nextNo:nextNo(),dashboard:dash(cons),recent:cons.slice(-12).reverse()};},
+    peekNextNo:function(d){return nextNo(d);},
+    saveConsignment:function(p){var ex=cons.filter(function(c){return c.consignment_no===p.consignment_no;})[0];
+      if(!p.consignment_no||!ex){p.consignment_no=p.consignment_no||nextNo(p.cons_date);cons.push(p);}else{for(var k in p)ex[k]=p[k];p=ex;}
+      if(p.vehicle_no&&!veh.filter(function(v){return v.vehicle_no===p.vehicle_no;}).length)veh.push({vehicle_no:p.vehicle_no,active:'Yes'});
+      apply(p);return stmt(p.consignment_no);},
+    deleteConsignment:function(no){cons=cons.filter(function(c){return c.consignment_no!==no;});ent=ent.filter(function(e){return e.consignment_no!==no;});return{ok:true};},
+    getStatement:stmt,
+    saveEntry:function(p){p.entry_id=p.entry_id||('E'+Date.now()+Math.floor(Math.random()*900));
+      if(p.qty&&p.rate)p.amount=r2(nn(p.qty)*nn(p.rate));
+      var ex=ent.filter(function(e){return e.entry_id===p.entry_id;})[0];
+      if(ex){for(var k in p)ex[k]=p[k];}else ent.push(p);
+      apply(cons.filter(function(c){return c.consignment_no===p.consignment_no;})[0]);return stmt(p.consignment_no);},
+    deleteEntry:function(id){var e=ent.filter(function(x){return x.entry_id===id;})[0];ent=ent.filter(function(x){return x.entry_id!==id;});
+      apply(cons.filter(function(c){return c.consignment_no===e.consignment_no;})[0]);return stmt(e.consignment_no);},
+    searchConsignments:search,
+    getConsolidated:function(f){var r=search(f);var gb=(f&&f.groupBy)||'none';var g={};
+      if(gb!=='none'){r.rows.forEach(function(c){var k=gb==='vehicle'?c.vehicle_no:gb==='party'?c.party_name:gb==='commodity'?c.commodity:String(c.cons_date).slice(0,7);
+        k=k||'—';g[k]=g[k]||{key:k,count:0,qty:0,basic:0,add:0,less:0,net:0,paid:0,balance:0};var x=g[k];x.count++;
+        x.qty+=nn(c.billing_basis==='Received weight'?(c.received_qty||c.dispatch_qty):c.dispatch_qty);
+        x.basic+=nn(c.basic_amount);x.add+=nn(c.total_add);x.less+=nn(c.total_less);x.net+=nn(c.net_payable);x.paid+=nn(c.total_paid);x.balance+=nn(c.balance);});}
+      return {rows:r.rows,summary:r.summary,groupBy:gb,groups:Object.keys(g).map(function(k){return g[k];})};},
+    getLedgerBook:function(f){var r=search(f);var keep={};r.rows.forEach(function(c){keep[c.consignment_no]=1;});
+      var es=ent.filter(function(e){return keep[e.consignment_no];});var by={};
+      es.forEach(function(e){var k=e.nature+'|'+e.head;by[k]=by[k]||{nature:e.nature,head:e.head,count:0,qty:0,amount:0};
+        by[k].count++;by[k].qty+=nn(e.qty);by[k].amount+=nn(e.amount);});
+      return {heads:Object.keys(by).map(function(k){return by[k];}).sort(function(a,b){return b.amount-a.amount;}),entries:es,summary:r.summary};},
+    addParty:function(o){par.push({party_name:o.party_name,party_type:o.party_type,place:o.place,phone:o.phone,gstin:o.gstin,active:'Yes'});return {added:o.party_name,parties:par};},
+    addCommodity:function(o){cmd.push({commodity:o.commodity,default_unit:o.default_unit,default_rate:o.default_rate,active:'Yes'});return {added:o.commodity,commodities:cmd};},
+    addVehicle:function(o){var v=String(o.vehicle_no).toUpperCase();veh.push({vehicle_no:v,owner_name:o.owner_name,driver_name:o.driver_name,phone:o.phone,capacity:o.capacity,active:'Yes'});return {added:v,vehicles:veh};},
+    listMaster:function(k){return k==='head'?heads:k==='commodity'?cmd:k==='party'?par:veh;},
+    saveMaster:function(k){return DEMO.listMaster(k);},
+    deleteMaster:function(k){return DEMO.listMaster(k);},
+    exportExcel:function(){throw new Error('Excel export needs the live Google Sheet. Deploy first.');}
+  };
+})();
+
+/* ==========================================================================
+   HELPERS
+   ========================================================================== */
+var $=function(id){return document.getElementById(id);};
+function n(v){var x=parseFloat(String(v==null?'':v).replace(/,/g,''));return isNaN(x)?0:x;}
+function inr(v){return Number(n(v)).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function money(v){return '₹'+inr(v);}
+function qty(v,u){return Number(n(v)).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:3})+(u?' '+u:'');}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function dmy(s){if(!s)return '';var p=String(s).slice(0,10).split('-');return p.length===3?p[2]+'-'+p[1]+'-'+p[0]:String(s);}
+function busy(on){$('busy').classList.toggle('on',!!on);}
+var toastT;
+function toast(m,bad){var t=$('toast');t.textContent=m;t.classList.toggle('bad',!!bad);t.classList.add('on');
+  clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove('on');},3600);}
+function fail(e){busy(false);toast((e&&e.message)||String(e)||'Something went wrong.',true);}
+function stamp(){var d=new Date();function p(x){return ('0'+x).slice(-2);}
+  return p(d.getDate())+'-'+p(d.getMonth()+1)+'-'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes());}
+
+function words(v){
+  var whole=Math.floor(Math.abs(n(v))), paise=Math.round((Math.abs(n(v))-whole)*100);
+  var a=['','one','two','three','four','five','six','seven','eight','nine','ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+  var b=['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+  function t2(x){return x<20?a[x]:b[Math.floor(x/10)]+(x%10?' '+a[x%10]:'');}
+  function t3(x){return (x>99?a[Math.floor(x/100)]+' hundred'+(x%100?' ':''):'')+(x%100?t2(x%100):'');}
+  function big(x){ if(!x) return 'zero';
+    var o=[],cr=Math.floor(x/10000000);x%=10000000;var lk=Math.floor(x/100000);x%=100000;
+    var th=Math.floor(x/1000);x%=1000;
+    if(cr)o.push(t3(cr)+' crore'); if(lk)o.push(t3(lk)+' lakh'); if(th)o.push(t3(th)+' thousand'); if(x)o.push(t3(x));
+    return o.join(' ');}
+  var s='Rupees '+big(whole)+(paise?' and '+t2(paise)+' paise':'')+' only';
+  return (n(v)<0?'Minus ':'')+s.charAt(0).toUpperCase()+s.slice(1);
+}
+
+var STATE={boot:null,stmt:null,editingEntry:null,nature:'LESS',report:null,book:null,masterKind:'vehicle',dlgKind:null};
+
+/* ==========================================================================
+   NAV
+   ========================================================================== */
+function show(v){
+  document.querySelectorAll('.view').forEach(function(s){s.classList.toggle('on',s.id==='view-'+v);});
+  document.querySelectorAll('#nav button').forEach(function(b){b.setAttribute('aria-current',b.dataset.view===v?'true':'false');});
+  window.scrollTo(0,0);
+}
+document.addEventListener('click',function(ev){
+  var b=ev.target.closest('[data-view]');
+  if(b&&(b.parentElement.id==='nav'||b.classList.contains('btn'))) show(b.dataset.view);
+});
+
+/* ==========================================================================
+   BOOTSTRAP + DROPDOWNS
+   ========================================================================== */
+function fillSelect(id,arr,cur,placeholder){
+  var el=$(id); if(!el) return;
+  var v=(cur!==undefined&&cur!==null)?cur:el.value;
+  var html=(placeholder!==undefined?'<option value="">'+esc(placeholder)+'</option>':'');
+  html+=arr.map(function(x){return '<option value="'+esc(x)+'">'+esc(x)+'</option>';}).join('');
+  el.innerHTML=html;
+  if(v&&arr.indexOf(v)<0) el.insertAdjacentHTML('beforeend','<option value="'+esc(v)+'">'+esc(v)+' (not in list)</option>');
+  el.value=v||'';
+}
+function partyNames(){return (STATE.boot.parties||[]).map(function(p){return p.party_name;}).filter(Boolean);}
+function vehicleNames(){return (STATE.boot.vehicles||[]).map(function(v){return v.vehicle_no;}).filter(Boolean);}
+function commodityNames(){return (STATE.boot.commodities||[]).map(function(c){return c.commodity;}).filter(Boolean);}
+
+function paintDropdowns(keep){
+  fillSelect('f_party',partyNames(),keep?undefined:'','— choose party —');
+  fillSelect('f_veh',vehicleNames(),keep?undefined:'','— choose vehicle —');
+  fillSelect('f_cmd',commodityNames(),keep?undefined:'','— choose commodity —');
+  fillSelect('s_party',partyNames(),undefined,'All parties');
+  fillSelect('r_party',partyNames(),undefined,'All parties');
+  fillSelect('r_veh',vehicleNames(),undefined,'All vehicles');
+}
+
+function boot(){
+  busy(true);
+  api('getBootstrap').then(function(b){
+    STATE.boot=b;busy(false);
+    $('brandOrg').textContent=b.cfg.org;
+    $('railFoot').textContent=LIVE?'Connected to your Google Sheet':'Preview mode — not saving';
+    if(!LIVE){$('demoBanner').style.display='block';$('btnXlsx').title='Available after deployment';}
+    $('f_date').value=b.cfg.today;$('e_date').value=b.cfg.today;$('f_no').placeholder=b.nextNo;
+    paintDropdowns();
+    renderHeads();
+    renderStats('dashStats',b.dashboard);
+    $('recentWrap').innerHTML=consTable(b.recent);
+  }).catch(fail);
+}
+function refreshBoot(){
+  return api('getBootstrap').then(function(b){
+    STATE.boot=b;
+    renderStats('dashStats',b.dashboard);
+    $('recentWrap').innerHTML=consTable(b.recent);
+    paintDropdowns(true);
+  }).catch(function(){});
+}
+
+/* ==========================================================================
+   QUICK-ADD DIALOG
+   ========================================================================== */
+var DLG={
+  party:{title:'Add a party',sub:'Goes into the Parties sheet and the dropdown',fn:'addParty',
+    fields:[['party_name','Party name',''],['party_type','Type','select:Supplier,Buyer,Transporter,Own'],
+            ['place','Place',''],['phone','Phone',''],['gstin','GSTIN','']],
+    key:'party_name',target:'f_party'},
+  vehicle:{title:'Add a vehicle',sub:'Goes into the Vehicles sheet and the dropdown',fn:'addVehicle',
+    fields:[['vehicle_no','Vehicle number',''],['owner_name','Owner',''],['driver_name','Driver',''],
+            ['phone','Phone',''],['capacity','Capacity','']],
+    key:'vehicle_no',target:'f_veh'},
+  commodity:{title:'Add a commodity',sub:'Goes into the Commodities sheet and the dropdown',fn:'addCommodity',
+    fields:[['commodity','Commodity',''],['default_unit','Default unit','select:Qtl,MT,Kg,Bag'],
+            ['default_rate','Default rate','number']],
+    key:'commodity',target:'f_cmd'}
+};
+document.addEventListener('click',function(ev){
+  var b=ev.target.closest('[data-add]'); if(!b) return;
+  openDialog(b.dataset.add);
+});
+function openDialog(kind){
+  var d=DLG[kind]; if(!d) return;
+  STATE.dlgKind=kind;
+  $('dlgTitle').textContent=d.title; $('dlgSub').textContent=d.sub;
+  $('dlgBody').innerHTML='<div class="grid g2">'+d.fields.map(function(f){
+    var id='dlg_'+f[0];
+    if(String(f[2]).indexOf('select:')===0){
+      var opts=f[2].slice(7).split(',');
+      return '<div><label for="'+id+'">'+esc(f[1])+'</label><select id="'+id+'" data-df="'+f[0]+'">'+
+        opts.map(function(o){return '<option>'+esc(o)+'</option>';}).join('')+'</select></div>';
+    }
+    var type=f[2]==='number'?' type="number" step="0.01"':'';
+    return '<div><label for="'+id+'">'+esc(f[1])+'</label><input id="'+id+'" data-df="'+f[0]+'"'+type+'></div>';
+  }).join('')+'</div>';
+  $('scrim').classList.add('on');
+  setTimeout(function(){var first=$('dlgBody').querySelector('[data-df]'); if(first) first.focus();},40);
+}
+function closeDialog(){$('scrim').classList.remove('on');STATE.dlgKind=null;}
+$('dlgX').addEventListener('click',closeDialog);
+$('dlgCancel').addEventListener('click',closeDialog);
+$('scrim').addEventListener('click',function(e){if(e.target===$('scrim'))closeDialog();});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&STATE.dlgKind)closeDialog();});
+$('dlgBody').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('dlgSave').click();}});
+
+$('dlgSave').addEventListener('click',function(){
+  var kind=STATE.dlgKind; if(!kind) return;
+  var d=DLG[kind],obj={};
+  $('dlgBody').querySelectorAll('[data-df]').forEach(function(el){obj[el.dataset.df]=el.value.trim();});
+  if(!obj[d.key]) return toast(d.fields[0][1]+' is required.',true);
+  busy(true);
+  api(d.fn,obj).then(function(res){
+    busy(false);closeDialog();
+    if(res.parties)      STATE.boot.parties=res.parties;
+    if(res.vehicles)     STATE.boot.vehicles=res.vehicles;
+    if(res.commodities)  STATE.boot.commodities=res.commodities;
+    paintDropdowns(true);
+    $(d.target).value=res.added;
+    if(kind==='commodity') $('f_cmd').dispatchEvent(new Event('change'));
+    toast(res.added+' added');
+  }).catch(fail);
+});
+
+/* ==========================================================================
+   RENDERERS
+   ========================================================================== */
+function renderStats(el,d){
+  var box=$(el); box.style.display='grid';
+  box.innerHTML=stat('Consignments',d.count+(d.open?' · '+d.open+' open':''))+
+    stat('Quantity billed',qty(d.qty,'Qtl'))+stat('Basic amount',money(d.basic))+
+    stat('Deductions',money(d.less))+stat('Net payable',money(d.net))+
+    stat('Paid',money(d.paid),'paid')+stat('Outstanding',money(d.balance),'due');
+}
+function stat(k,v,cls){return '<div class="stat '+(cls||'')+'"><div class="k">'+esc(k)+'</div><div class="v">'+esc(v)+'</div></div>';}
+
+function billedQty(c){
+  return n(c.billing_basis==='Received weight'
+    ? (String(c.received_qty).trim()===''?c.dispatch_qty:c.received_qty) : c.dispatch_qty);
+}
+function consTable(rows){
+  if(!rows||!rows.length) return '<div class="empty"><b>No consignments yet</b>Enter your first truck from “New consignment”.</div>';
+  var h='<table><thead><tr><th>Date</th><th>Consignment</th><th>Vehicle</th><th>Party</th><th>Commodity</th>'+
+    '<th class="n">Qty</th><th class="n">Rate</th><th class="n">Basic</th><th class="n">Less</th>'+
+    '<th class="n">Net</th><th class="n">Paid</th><th class="n">Balance</th><th></th></tr></thead><tbody>';
+  var t={basic:0,less:0,net:0,paid:0,bal:0,q:0};
+  rows.forEach(function(c){
+    var q=billedQty(c);
+    t.q+=q;t.basic+=n(c.basic_amount);t.less+=n(c.total_less);t.net+=n(c.net_payable);t.paid+=n(c.total_paid);t.bal+=n(c.balance);
+    h+='<tr class="click" data-open="'+esc(c.consignment_no)+'">'+
+      '<td>'+dmy(c.cons_date)+'</td><td class="num">'+esc(c.consignment_no)+'</td>'+
+      '<td><span class="plate sm">'+esc(c.vehicle_no)+'</span></td><td>'+esc(c.party_name||'—')+'</td>'+
+      '<td>'+esc(c.commodity||'—')+'</td><td class="n">'+qty(q)+'</td><td class="n">'+money(c.rate)+'</td>'+
+      '<td class="n">'+money(c.basic_amount)+'</td><td class="n">'+(n(c.total_less)?money(c.total_less):'—')+'</td>'+
+      '<td class="n">'+money(c.net_payable)+'</td><td class="n">'+money(c.total_paid)+'</td>'+
+      '<td class="n"><b>'+money(c.balance)+'</b></td>'+
+      '<td><span class="tag '+(String(c.status)==='Closed'?'closed':'open')+'">'+esc(c.status||'Open')+'</span></td></tr>';
+  });
+  h+='</tbody><tfoot><tr class="tot"><td colspan="5">'+rows.length+' consignments</td><td class="n">'+qty(t.q)+'</td>'+
+    '<td></td><td class="n">'+money(t.basic)+'</td><td class="n">'+money(t.less)+'</td><td class="n">'+money(t.net)+'</td>'+
+    '<td class="n">'+money(t.paid)+'</td><td class="n">'+money(t.bal)+'</td><td></td></tr></tfoot></table>';
+  return h;
+}
+document.addEventListener('click',function(ev){
+  var tr=ev.target.closest('[data-open]'); if(tr) openConsignment(tr.dataset.open);
+});
+
+/* ==========================================================================
+   NEW / EDIT
+   ========================================================================== */
+function recalcNewForm(){
+  var dq=n($('f_dq').value),rq=$('f_rq').value===''?dq:n($('f_rq').value);
+  var q=$('f_basis').value==='Received weight'?rq:dq;
+  var basic=Math.round(q*n($('f_rate').value)*100)/100;
+  $('f_basic').value=basic?basic.toFixed(2):'';
+  var sh=Math.round((dq-rq)*1000)/1000;
+  var msg=q?'Billing on '+qty(q,$('f_unit').value)+' × '+money($('f_rate').value)+' = <b>'+money(basic)+'</b>':'Enter quantity and rate.';
+  if(sh>0) msg+=' · Weight shortage of '+qty(sh,$('f_unit').value)+
+    ($('f_basis').value==='Dispatch weight'?' is <b>not</b> deducted yet — add it as a line in the ledger.':' is already excluded from the billed quantity.');
+  $('newCalc').innerHTML=msg;
+}
+['f_dq','f_rq','f_rate','f_basis','f_unit'].forEach(function(id){
+  $(id).addEventListener('input',recalcNewForm);$(id).addEventListener('change',recalcNewForm);
+});
+$('f_date').addEventListener('change',function(){
+  if($('f_no').dataset.editing) return;
+  api('peekNextNo',$('f_date').value).then(function(no){$('f_no').placeholder=no;}).catch(function(){});
+});
+$('f_cmd').addEventListener('change',function(){
+  var c=(STATE.boot.commodities||[]).filter(function(x){return x.commodity===$('f_cmd').value;})[0];
+  if(c&&c.default_unit)$('f_unit').value=c.default_unit;
+  if(c&&n(c.default_rate)&&!n($('f_rate').value)){$('f_rate').value=c.default_rate;}
+  recalcNewForm();
+});
+$('f_veh').addEventListener('change',function(){
+  var v=(STATE.boot.vehicles||[]).filter(function(x){return x.vehicle_no===$('f_veh').value;})[0];
+  if(v&&v.driver_name&&!$('f_driver').value) $('f_driver').value=v.driver_name;
+});
+
+function resetConsForm(){
+  ['f_no','f_driver','f_from','f_to','f_dq','f_rq','f_rate','f_rem','f_basic'].forEach(function(id){$(id).value='';});
+  ['f_ptype','f_status','f_unit','f_basis'].forEach(function(id){$(id).selectedIndex=0;});
+  paintDropdowns();
+  $('f_date').value=STATE.boot.cfg.today;
+  $('f_no').dataset.editing='';
+  $('newTitle').textContent='New consignment';
+  $('editingNote').textContent='';$('newCalc').textContent='';
+  api('peekNextNo',$('f_date').value).then(function(no){$('f_no').placeholder=no;}).catch(function(){});
+}
+$('btnResetCons').addEventListener('click',resetConsForm);
+
+function loadConsForm(c){
+  $('f_no').value=c.consignment_no;$('f_no').dataset.editing='1';
+  $('f_date').value=String(c.cons_date).slice(0,10);
+  fillSelect('f_veh',vehicleNames(),c.vehicle_no||'','— choose vehicle —');
+  fillSelect('f_party',partyNames(),c.party_name||'','— choose party —');
+  fillSelect('f_cmd',commodityNames(),c.commodity||'','— choose commodity —');
+  $('f_driver').value=c.driver_name||'';$('f_ptype').value=c.party_type||'Supplier';
+  $('f_status').value=c.status||'Open';$('f_from').value=c.from_place||'';$('f_to').value=c.to_place||'';
+  $('f_unit').value=c.unit||'Qtl';$('f_basis').value=c.billing_basis||'Dispatch weight';
+  $('f_dq').value=c.dispatch_qty||'';$('f_rq').value=c.received_qty||'';$('f_rate').value=c.rate||'';
+  $('f_rem').value=c.remarks||'';
+  $('newTitle').textContent='Edit consignment';
+  $('editingNote').textContent='Editing '+c.consignment_no;
+  recalcNewForm();
+}
+
+$('btnSaveCons').addEventListener('click',function(){
+  var p={consignment_no:$('f_no').value.trim(),cons_date:$('f_date').value,vehicle_no:$('f_veh').value,
+    driver_name:$('f_driver').value,party_type:$('f_ptype').value,party_name:$('f_party').value,
+    commodity:$('f_cmd').value,from_place:$('f_from').value,to_place:$('f_to').value,unit:$('f_unit').value,
+    dispatch_qty:$('f_dq').value,received_qty:$('f_rq').value,billing_basis:$('f_basis').value,
+    rate:$('f_rate').value,status:$('f_status').value,remarks:$('f_rem').value};
+  if(!p.vehicle_no) return toast('Pick a vehicle, or add one with the + button.',true);
+  if(n(p.dispatch_qty)<=0) return toast('Dispatch quantity must be more than zero.',true);
+  if(n(p.rate)<=0) return toast('Rate must be more than zero.',true);
+  busy(true);
+  api('saveConsignment',p).then(function(st){
+    busy(false);toast('Saved '+st.consignment.consignment_no);
+    resetConsForm();setStatement(st);show('ledger');refreshBoot();
+  }).catch(fail);
+});
+
+/* ==========================================================================
+   LEDGER
+   ========================================================================== */
+function openConsignment(no){
+  busy(true);
+  api('getStatement',no).then(function(st){busy(false);setStatement(st);show('ledger');}).catch(fail);
+}
+function setStatement(st){
+  STATE.stmt=st;
+  var c=st.consignment,t=st.totals,u=c.unit||'Qtl';
+  $('ledgerEmpty').style.display='none';$('ledgerBody').style.display='block';
+  $('lg_plate').textContent=c.vehicle_no;$('lg_no').textContent=c.consignment_no;
+  $('lg_meta').textContent=dmy(c.cons_date)+' · '+(c.party_name||'party not set')+
+    (c.commodity?' · '+c.commodity:'')+((c.from_place||c.to_place)?' · '+(c.from_place||'?')+' → '+(c.to_place||'?'):'');
+
+  $('lg_grid').innerHTML=[['Status',c.status||'Open'],['Driver',c.driver_name||'—'],
+    ['Dispatch qty',qty(c.dispatch_qty,u)],
+    ['Received qty',String(c.received_qty).trim()===''?qty(c.dispatch_qty,u):qty(c.received_qty,u)],
+    ['Shortage',t.shortage_qty>0?qty(t.shortage_qty,u):'—'],
+    ['Billed on',(c.billing_basis||'Dispatch weight')+' · '+qty(t.billing_qty,u)],
+    ['Rate',money(c.rate)+' / '+u],['Remarks',c.remarks||'—']]
+    .map(function(r){return '<div><div class="k">'+esc(r[0])+'</div><div class="v">'+esc(r[1])+'</div></div>';}).join('');
+
+  $('lg_settle').innerHTML=
+    '<div><div class="k">Basic amount</div><div class="v">'+money(t.basic_amount)+'</div></div>'+
+    '<div><div class="k">Additions</div><div class="v" style="color:var(--add)">'+(t.total_add?'+ '+money(t.total_add):'—')+'</div></div>'+
+    '<div><div class="k">Deductions</div><div class="v" style="color:var(--less)">'+(t.total_less?'− '+money(t.total_less):'—')+'</div></div>'+
+    '<div class="net"><div class="k">Net payable</div><div class="v">'+money(t.net_payable)+'</div></div>'+
+    '<div><div class="k">Paid</div><div class="v">'+money(t.total_paid)+'</div></div>'+
+    '<div class="bal"><div class="k">Balance</div><div class="v">'+money(t.balance)+'</div></div>';
+
+  var h='<table><thead><tr><th>Date</th><th>Particulars</th><th>Head</th><th class="n">Qty</th><th class="n">Rate</th>'+
+    '<th class="n">Debit</th><th class="n">Credit</th><th class="n">Balance</th><th class="noprint"></th></tr></thead><tbody>';
+  var run=t.basic_amount;
+  h+='<tr><td>'+dmy(c.cons_date)+'</td><td><b>Goods value</b> — '+esc(c.commodity||'consignment')+'</td>'+
+     '<td><span class="tag add">BASIC</span></td><td class="n">'+qty(t.billing_qty)+'</td><td class="n">'+money(c.rate)+'</td>'+
+     '<td class="n">—</td><td class="n">'+money(t.basic_amount)+'</td><td class="n">'+money(run)+'</td><td class="noprint"></td></tr>';
+  if(!st.entries.length) h+='<tr><td colspan="9" style="color:var(--ink2);padding:16px">No deductions or payments recorded yet.</td></tr>';
+  st.entries.forEach(function(e){
+    var cls=e.nature==='ADD'?'add':e.nature==='PAYMENT'?'pay':'less';
+    var cr=e.nature==='ADD';
+    run=cr?run+n(e.amount):run-n(e.amount);
+    h+='<tr><td>'+dmy(e.entry_date)+'</td><td>'+esc(e.description||e.head)+
+      (e.ref_no?' <span style="color:var(--ink3)">· '+esc(e.ref_no)+'</span>':'')+'</td>'+
+      '<td><span class="tag '+cls+'">'+esc(e.head)+'</span></td>'+
+      '<td class="n">'+(n(e.qty)?qty(e.qty):'—')+'</td><td class="n">'+(n(e.rate)?money(e.rate):'—')+'</td>'+
+      '<td class="n">'+(cr?'—':money(e.amount))+'</td><td class="n">'+(cr?money(e.amount):'—')+'</td>'+
+      '<td class="n">'+money(run)+'</td>'+
+      '<td class="noprint"><button class="mini" data-edit="'+esc(e.entry_id)+'">Edit</button> '+
+      '<button class="mini x" data-del="'+esc(e.entry_id)+'">Remove</button></td></tr>';
+  });
+  h+='</tbody><tfoot><tr class="tot"><td colspan="7">Balance to be settled</td><td class="n">'+money(t.balance)+'</td><td class="noprint"></td></tr></tfoot></table>';
+  $('lg_table').innerHTML=h;
+
+  $('e_date').value=String(c.cons_date).slice(0,10);
+  $('quickHint').textContent=(t.shortage_qty>0&&(c.billing_basis||'Dispatch weight')==='Dispatch weight')
+    ?'Shortage of '+qty(t.shortage_qty,u)+' is not deducted yet.':'';
+  clearEntryForm(true);
+}
+$('btnEditCons').addEventListener('click',function(){if(STATE.stmt){loadConsForm(STATE.stmt.consignment);show('new');}});
+$('btnPrint').addEventListener('click',function(){window.print();});
+$('btnDelCons').addEventListener('click',function(){
+  if(!STATE.stmt) return;
+  var no=STATE.stmt.consignment.consignment_no;
+  if(!confirm('Delete '+no+' and every line under it? This cannot be undone.')) return;
+  busy(true);
+  api('deleteConsignment',no).then(function(){
+    busy(false);toast(no+' deleted');STATE.stmt=null;
+    $('ledgerBody').style.display='none';$('ledgerEmpty').style.display='block';
+    refreshBoot();show('dash');
+  }).catch(fail);
+});
+
+function renderHeads(){
+  var list=(STATE.boot.heads||[]).filter(function(h){return h.nature===STATE.nature;});
+  $('e_head').innerHTML=list.map(function(h){return '<option value="'+esc(h.head)+'">'+esc(h.head)+'</option>';}).join('')
+    ||'<option value="Other">Other</option>';
+}
+$('natureTabs').addEventListener('click',function(ev){
+  var b=ev.target.closest('button[data-nature]'); if(!b) return;
+  STATE.nature=b.dataset.nature;
+  document.querySelectorAll('#natureTabs button').forEach(function(x){x.setAttribute('aria-pressed',String(x===b));});
+  renderHeads();recalcEntry();
+});
+function recalcEntry(){
+  var q=n($('e_qty').value),r=n($('e_rate').value);
+  if(q>0&&r>0){$('e_amt').value=(Math.round(q*r*100)/100).toFixed(2);$('e_amt').readOnly=true;}
+  else $('e_amt').readOnly=false;
+  var amt=n($('e_amt').value);
+  if(!amt){$('entryCalc').textContent='';return;}
+  var t=STATE.stmt?STATE.stmt.totals:null;
+  var word=STATE.nature==='ADD'?'add to':STATE.nature==='PAYMENT'?'settle':'reduce';
+  var after=t?(STATE.nature==='ADD'?t.balance+amt:t.balance-amt):0;
+  $('entryCalc').innerHTML=money(amt)+' will '+word+' this consignment. Balance after: <b>'+money(after)+'</b>';
+}
+['e_qty','e_rate','e_amt'].forEach(function(id){$(id).addEventListener('input',recalcEntry);});
+function clearEntryForm(keepDate){
+  STATE.editingEntry=null;
+  ['e_qty','e_rate','e_amt','e_desc','e_ref'].forEach(function(id){$(id).value='';});
+  $('e_amt').readOnly=false;$('entryCalc').textContent='';$('entryEditNote').textContent='';
+  $('btnSaveEntry').textContent='Add line';
+  if(!keepDate&&STATE.stmt)$('e_date').value=String(STATE.stmt.consignment.cons_date).slice(0,10);
+}
+$('btnClearEntry').addEventListener('click',function(){clearEntryForm();});
+$('btnQuickShortage').addEventListener('click',function(){
+  if(!STATE.stmt) return;
+  var t=STATE.stmt.totals,c=STATE.stmt.consignment;
+  if(!(t.shortage_qty>0)) return toast('No weight shortage on this consignment.',true);
+  STATE.nature='LESS';
+  document.querySelectorAll('#natureTabs button').forEach(function(x){x.setAttribute('aria-pressed',String(x.dataset.nature==='LESS'));});
+  renderHeads();
+  $('e_head').value='Weight shortage / Kanta';
+  $('e_qty').value=t.shortage_qty;$('e_rate').value=c.rate;
+  $('e_desc').value='Kanta shortage '+qty(t.shortage_qty,c.unit||'Qtl');
+  recalcEntry();
+});
+$('btnSaveEntry').addEventListener('click',function(){
+  if(!STATE.stmt) return toast('Open a consignment first.',true);
+  var p={entry_id:STATE.editingEntry||'',consignment_no:STATE.stmt.consignment.consignment_no,
+    entry_date:$('e_date').value,nature:STATE.nature,head:$('e_head').value,description:$('e_desc').value,
+    qty:$('e_qty').value,rate:$('e_rate').value,amount:$('e_amt').value,ref_no:$('e_ref').value};
+  if(n(p.amount)<=0&&!(n(p.qty)>0&&n(p.rate)>0)) return toast('Give an amount, or a quantity and rate.',true);
+  busy(true);
+  api('saveEntry',p).then(function(st){
+    busy(false);toast(STATE.editingEntry?'Line updated':'Line added');setStatement(st);refreshBoot();
+  }).catch(fail);
+});
+document.addEventListener('click',function(ev){
+  var ed=ev.target.closest('[data-edit]'),dl=ev.target.closest('[data-del]');
+  if(ed&&STATE.stmt){
+    var e=STATE.stmt.entries.filter(function(x){return String(x.entry_id)===ed.dataset.edit;})[0];
+    if(!e) return;
+    STATE.editingEntry=e.entry_id;STATE.nature=e.nature;
+    document.querySelectorAll('#natureTabs button').forEach(function(x){x.setAttribute('aria-pressed',String(x.dataset.nature===e.nature));});
+    renderHeads();
+    $('e_head').value=e.head;$('e_date').value=String(e.entry_date).slice(0,10);
+    $('e_qty').value=e.qty||'';$('e_rate').value=e.rate||'';$('e_amt').value=e.amount||'';
+    $('e_desc').value=e.description||'';$('e_ref').value=e.ref_no||'';
+    $('btnSaveEntry').textContent='Update line';$('entryEditNote').textContent='Editing an existing line';
+    recalcEntry();$('e_head').scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  if(dl){
+    if(!confirm('Remove this line?')) return;
+    busy(true);
+    api('deleteEntry',dl.dataset.del).then(function(st){busy(false);toast('Line removed');setStatement(st);refreshBoot();}).catch(fail);
+  }
+});
+
+/* ==========================================================================
+   SEARCH
+   ========================================================================== */
+function runSearch(){
+  var f={q:$('s_q').value,from:$('s_from').value,to:$('s_to').value,party:$('s_party').value,
+         status:$('s_status').value,onlyDue:$('s_due').value==='1'};
+  busy(true);
+  api('searchConsignments',f).then(function(r){
+    busy(false);renderStats('searchStats',r.summary);
+    $('searchWrap').innerHTML=r.rows.length?consTable(r.rows)
+      :'<div class="empty"><b>No match</b>Try a shorter search term, or widen the dates.</div>';
+  }).catch(fail);
+}
+$('btnSearch').addEventListener('click',runSearch);
+$('s_q').addEventListener('keydown',function(e){if(e.key==='Enter')runSearch();});
+
+/* ==========================================================================
+   CONSOLIDATED
+   ========================================================================== */
+function repFilters(){
+  return {from:$('r_from').value,to:$('r_to').value,vehicle:$('r_veh').value,
+          party:$('r_party').value,groupBy:$('r_group').value};
+}
+function periodLabel(){
+  var a=$('r_from').value,b=$('r_to').value;
+  if(a&&b) return dmy(a)+' to '+dmy(b);
+  if(a) return 'from '+dmy(a); if(b) return 'up to '+dmy(b);
+  return 'All dates';
+}
+$('btnReport').addEventListener('click',function(){
+  var f=repFilters();busy(true);
+  Promise.all([api('getConsolidated',f),api('getLedgerBook',f)]).then(function(o){
+    busy(false);
+    var rep=o[0],book=o[1];
+    STATE.report=rep;STATE.book=book;
+    ['btnPdfRep','btnCsv'].forEach(function(id){$(id).disabled=!rep.rows.length;});
+    $('btnXlsx').disabled=!rep.rows.length||!LIVE;
+    $('repNote').textContent=rep.rows.length?rep.rows.length+' consignments · '+periodLabel():'';
+    renderStats('repStats',rep.summary);
+    $('repWrap').innerHTML=rep.rows.length?consTable(rep.rows)
+      :'<div class="empty"><b>Nothing in this period</b>Widen the dates or clear the filters.</div>';
+
+    if(rep.groupBy!=='none'&&rep.groups.length){
+      $('repGroupPanel').style.display='block';
+      $('repGroupTitle').textContent='Summary by '+rep.groupBy;
+      var g='<table><thead><tr><th>'+esc(rep.groupBy)+'</th><th class="n">Trucks</th><th class="n">Qty</th>'+
+        '<th class="n">Basic</th><th class="n">Additions</th><th class="n">Deductions</th><th class="n">Net</th>'+
+        '<th class="n">Paid</th><th class="n">Balance</th></tr></thead><tbody>';
+      var T={c:0,q:0,b:0,a:0,l:0,nt:0,p:0,bal:0};
+      rep.groups.forEach(function(x){
+        T.c+=x.count;T.q+=x.qty;T.b+=x.basic;T.a+=x.add;T.l+=x.less;T.nt+=x.net;T.p+=x.paid;T.bal+=x.balance;
+        g+='<tr><td><b>'+esc(x.key)+'</b></td><td class="n">'+x.count+'</td><td class="n">'+qty(x.qty)+'</td>'+
+          '<td class="n">'+money(x.basic)+'</td><td class="n">'+money(x.add)+'</td><td class="n">'+money(x.less)+'</td>'+
+          '<td class="n">'+money(x.net)+'</td><td class="n">'+money(x.paid)+'</td><td class="n"><b>'+money(x.balance)+'</b></td></tr>';
+      });
+      g+='</tbody><tfoot><tr class="tot"><td>Total</td><td class="n">'+T.c+'</td><td class="n">'+qty(T.q)+'</td>'+
+        '<td class="n">'+money(T.b)+'</td><td class="n">'+money(T.a)+'</td><td class="n">'+money(T.l)+'</td>'+
+        '<td class="n">'+money(T.nt)+'</td><td class="n">'+money(T.p)+'</td><td class="n">'+money(T.bal)+'</td></tr></tfoot></table>';
+      $('repGroupWrap').innerHTML=g;
+    } else $('repGroupPanel').style.display='none';
+
+    if(book.heads.length){
+      var basic=rep.summary.basic||0;
+      var hh='<table><thead><tr><th>Head</th><th>Type</th><th class="n">Lines</th><th class="n">Qty</th><th class="n">Amount</th><th class="n">Share of basic</th></tr></thead><tbody>';
+      book.heads.forEach(function(x){
+        var cls=x.nature==='ADD'?'add':x.nature==='PAYMENT'?'pay':'less';
+        var pct=basic?(x.amount/basic*100):0;
+        hh+='<tr><td>'+esc(x.head)+'</td><td><span class="tag '+cls+'">'+esc(x.nature)+'</span></td>'+
+          '<td class="n">'+x.count+'</td><td class="n">'+(x.qty?qty(x.qty):'—')+'</td>'+
+          '<td class="n">'+money(x.amount)+'</td><td class="n">'+(pct?pct.toFixed(2)+'%':'—')+'</td></tr>';
+      });
+      $('repHeadWrap').innerHTML=hh+'</tbody></table>';
+    } else $('repHeadWrap').innerHTML='<div class="empty">No deductions or payments recorded in this period.</div>';
+  }).catch(fail);
+});
+
+/* ---------- downloads ---------- */
+function download(blob,filename){
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+}
+$('btnCsv').addEventListener('click',function(){
+  if(!STATE.report||!STATE.report.rows.length) return toast('Build the report first.',true);
+  var cols=['consignment_no','cons_date','vehicle_no','driver_name','party_type','party_name','commodity',
+    'from_place','to_place','unit','dispatch_qty','received_qty','billing_basis','rate','basic_amount',
+    'total_add','total_less','net_payable','total_paid','balance','status','remarks'];
+  var lines=[cols.join(',')];
+  STATE.report.rows.forEach(function(r){
+    lines.push(cols.map(function(c){var v=r[c]==null?'':String(r[c]);
+      return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}).join(','));
+  });
+  download(new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv;charset=utf-8;'}),'consignments.csv');
+  toast('CSV downloaded');
+});
+$('btnXlsx').addEventListener('click',function(){
+  if(!LIVE) return toast('Excel export needs the deployed web app.',true);
+  if(!STATE.report||!STATE.report.rows.length) return toast('Build the report first.',true);
+  busy(true);
+  api('exportExcel',repFilters()).then(function(res){
+    busy(false);
+    var bin=atob(res.base64),arr=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+    download(new Blob([arr],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),res.filename);
+    toast('Excel downloaded');
+  }).catch(fail);
+});
+
+/* ==========================================================================
+   PDF — designed, not the autoTable default
+   ========================================================================== */
+var PC={INK:[22,33,28],GOLD:[168,115,26],RULE:[215,221,214],INK2:[92,106,99],
+        LESS:[163,43,38],ADD:[31,107,74],PLATE:[246,233,168],BAND:[250,251,249],WHITE:[255,255,255]};
+function orgName(){return (STATE.boot&&STATE.boot.cfg.org)||'Consignment Hisab';}
+function orgSub(){return (STATE.boot&&STATE.boot.cfg.orgSub)||'';}
+
+function pdfNew(orient){
+  if(!window.jspdf||!window.jspdf.jsPDF){toast('PDF library did not load. Check the internet connection.',true);return null;}
+  return new window.jspdf.jsPDF({orientation:orient,unit:'mm',format:'a4'});
+}
+function pdfBanner(doc,title,right){
+  var W=doc.internal.pageSize.getWidth();
+  doc.setFillColor.apply(doc,PC.INK);doc.rect(0,0,W,25,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(14.5);
+  doc.text(orgName(),14,11.5);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.6);doc.setTextColor(159,176,167);
+  doc.text(orgSub(),14,16.8);
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(10);
+  doc.text(title,W-14,11.5,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(7.6);doc.setTextColor(159,176,167);
+  doc.text(right||'',W-14,16.8,{align:'right'});
+  doc.setFillColor.apply(doc,PC.GOLD);doc.rect(0,25,W,1.1,'F');
+}
+function pdfFooters(doc){
+  var W=doc.internal.pageSize.getWidth(),H=doc.internal.pageSize.getHeight();
+  var total=doc.internal.getNumberOfPages();
+  for(var i=1;i<=total;i++){
+    doc.setPage(i);
+    doc.setDrawColor.apply(doc,PC.RULE);doc.setLineWidth(.2);doc.line(14,H-11,W-14,H-11);
+    doc.setFont('helvetica','normal');doc.setFontSize(7.2);doc.setTextColor.apply(doc,PC.INK2);
+    doc.text(orgName()+'   ·   generated '+stamp(),14,H-7);
+    doc.text('Page '+i+' of '+total,W-14,H-7,{align:'right'});
+  }
+}
+function pdfPlate(doc,x,y,txt){
+  doc.setFont('courier','bold');doc.setFontSize(13);
+  var w=doc.getTextWidth(txt)+10;
+  doc.setFillColor.apply(doc,PC.PLATE);doc.setDrawColor.apply(doc,PC.INK);doc.setLineWidth(.7);
+  doc.roundedRect(x,y,w,9.5,1.4,1.4,'FD');
+  doc.setTextColor.apply(doc,PC.INK);doc.text(txt,x+5,y+6.4);
+  return w;
+}
+function pdfKpis(doc,y,items,h){
+  h=h||15;
+  var W=doc.internal.pageSize.getWidth(),m=14,avail=W-2*m,cw=avail/items.length;
+  doc.setDrawColor.apply(doc,PC.RULE);doc.setLineWidth(.25);doc.rect(m,y,avail,h);
+  items.forEach(function(it,i){
+    var x=m+i*cw;
+    if(i)doc.line(x,y,x,y+h);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.8);doc.setTextColor.apply(doc,PC.INK2);
+    doc.text(it[0],x+2.8,y+5);
+    doc.setFont('courier','bold');doc.setFontSize(10);doc.setTextColor.apply(doc,it[2]||PC.INK);
+    doc.text(it[1],x+2.8,y+11.2);
+  });
+  return y+h;
+}
+function pdfSectionTitle(doc,y,txt){
+  doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor.apply(doc,PC.INK);
+  doc.text(txt,14,y);
+  return y+2;
+}
+function tableBase(extra){
+  var base={theme:'plain',
+    styles:{font:'helvetica',fontSize:7.6,cellPadding:{top:1.9,bottom:1.9,left:2.2,right:2.2},textColor:PC.INK,overflow:'linebreak'},
+    headStyles:{fillColor:PC.INK,textColor:PC.WHITE,fontStyle:'bold',fontSize:7,cellPadding:{top:2.6,bottom:2.6,left:2.2,right:2.2}},
+    alternateRowStyles:{fillColor:PC.BAND},
+    footStyles:{fillColor:[251,242,223],textColor:PC.INK,fontStyle:'bold',fontSize:7.6,font:'courier'},
+    margin:{top:32,left:14,right:14,bottom:16}};
+  for(var k in extra) base[k]=extra[k];
+  return base;
+}
+function moneyCols(cols,width){var o={};cols.forEach(function(c){o[c]={halign:'right',font:'courier',cellWidth:width||'auto'};});return o;}
+
+/* ---------- single consignment statement ---------- */
+$('btnPdfStmt').addEventListener('click',function(){
+  if(!STATE.stmt) return;
+  var doc=pdfNew('p'); if(!doc) return;
+  var st=STATE.stmt,c=st.consignment,t=st.totals,u=c.unit||'Qtl';
+  var W=doc.internal.pageSize.getWidth();
+
+  pdfBanner(doc,'Consignment statement',c.consignment_no);
+  var y=34;
+  var pw=pdfPlate(doc,14,y,String(c.vehicle_no));
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor.apply(doc,PC.INK);
+  doc.text(String(c.party_name||'Party not set'),14+pw+6,y+4);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor.apply(doc,PC.INK2);
+  doc.text(dmy(c.cons_date)+'   ·   '+(c.commodity||'—')+'   ·   '+
+    ((c.from_place||'?')+' to '+(c.to_place||'?')),14+pw+6,y+8.6);
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor.apply(doc,PC.GOLD);
+  doc.text(String(c.status||'Open').toUpperCase(),W-14,y+4,{align:'right'});
+  y+=15;
+
+  y=pdfKpis(doc,y,[
+    ['Dispatch',qty(c.dispatch_qty)+' '+u],
+    ['Received',(String(c.received_qty).trim()===''?qty(c.dispatch_qty):qty(c.received_qty))+' '+u],
+    ['Shortage',(t.shortage_qty>0?qty(t.shortage_qty):'—')+(t.shortage_qty>0?' '+u:'')],
+    ['Billed qty',qty(t.billing_qty)+' '+u],
+    ['Rate','INR '+inr(c.rate)]
+  ]);
+  y+=7;
+
+  var body=[[dmy(c.cons_date),'Goods value — '+(c.commodity||'consignment'),'Basic',
+             qty(t.billing_qty),inr(c.rate),'',inr(t.basic_amount),inr(t.basic_amount)]];
+  var run=t.basic_amount;
+  st.entries.forEach(function(e){
+    var cr=e.nature==='ADD';
+    run=cr?run+n(e.amount):run-n(e.amount);
+    body.push([dmy(e.entry_date),(e.description||e.head)+(e.ref_no?'  ['+e.ref_no+']':''),e.head,
+      n(e.qty)?qty(e.qty):'',n(e.rate)?inr(e.rate):'',cr?'':inr(e.amount),cr?inr(e.amount):'',inr(run)]);
+  });
+
+  doc.autoTable(tableBase({
+    startY:y,
+    head:[['Date','Particulars','Head','Qty','Rate','Debit','Credit','Balance']],
+    body:body,
+    foot:[['','Balance to be settled','','','','','',inr(t.balance)]],
+    columnStyles:Object.assign({0:{cellWidth:19},1:{cellWidth:'auto'},2:{cellWidth:32,fontSize:6.8,textColor:PC.INK2}},
+      moneyCols([3,4,5,6,7])),
+    didParseCell:function(d){
+      if(d.section==='body'&&d.column.index===5&&d.cell.raw) d.cell.styles.textColor=PC.LESS;
+      if(d.section==='body'&&d.column.index===6&&d.cell.raw) d.cell.styles.textColor=PC.ADD;
+      if(d.section==='foot'&&d.column.index===1) d.cell.styles.halign='right';
+    },
+    didDrawPage:function(){pdfBanner(doc,'Consignment statement',c.consignment_no);}
+  }));
+
+  y=doc.lastAutoTable.finalY+8;
+  var H=doc.internal.pageSize.getHeight();
+  if(y>H-58){doc.addPage();pdfBanner(doc,'Consignment statement',c.consignment_no);y=34;}
+
+  var bw=(W-28)/2;
+  doc.setDrawColor.apply(doc,PC.RULE);doc.setLineWidth(.25);
+  doc.rect(14,y,bw-3,30);
+  var rows=[['Basic amount',inr(t.basic_amount),PC.INK],['Additions',t.total_add?'+ '+inr(t.total_add):'—',PC.ADD],
+            ['Deductions',t.total_less?'- '+inr(t.total_less):'—',PC.LESS],['Paid',inr(t.total_paid),PC.INK2]];
+  rows.forEach(function(r,i){
+    var ry=y+7+i*6.6;
+    doc.setFont('helvetica','normal');doc.setFontSize(7.6);doc.setTextColor.apply(doc,PC.INK2);
+    doc.text(r[0],18,ry);
+    doc.setFont('courier','bold');doc.setFontSize(8.4);doc.setTextColor.apply(doc,r[2]);
+    doc.text(r[1],14+bw-7,ry,{align:'right'});
+  });
+
+  doc.setFillColor.apply(doc,PC.INK);doc.rect(14+bw+3,y,bw-3,30,'F');
+  doc.setFont('helvetica','normal');doc.setFontSize(7.6);doc.setTextColor(159,176,167);
+  doc.text('Net payable',14+bw+8,y+8);
+  doc.setFont('courier','bold');doc.setFontSize(16);doc.setTextColor(255,255,255);
+  doc.text('INR '+inr(t.net_payable),14+bw+8,y+17);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.6);doc.setTextColor(168,115,26);
+  doc.text('Balance after payments: INR '+inr(t.balance),14+bw+8,y+25);
+
+  y+=36;
+  doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor.apply(doc,PC.INK);
+  doc.text(words(t.balance),14,y,{maxWidth:W-28});
+  if(c.remarks){
+    y+=8;
+    doc.setFont('helvetica','normal');doc.setFontSize(7.6);doc.setTextColor.apply(doc,PC.INK2);
+    doc.text('Remarks: '+c.remarks,14,y,{maxWidth:W-28});
+  }
+  y+=22;
+  if(y<H-22){
+    doc.setDrawColor.apply(doc,PC.INK);doc.setLineWidth(.3);
+    doc.line(W-74,y,W-14,y);
+    doc.setFont('helvetica','normal');doc.setFontSize(7.4);doc.setTextColor.apply(doc,PC.INK2);
+    doc.text('For '+orgName(),W-14,y+4.5,{align:'right'});
+  }
+
+  pdfFooters(doc);
+  doc.save('Statement '+String(c.consignment_no).replace(/\//g,'-')+'.pdf');
+  toast('PDF downloaded');
+});
+
+/* ---------- consolidated report ---------- */
+$('btnPdfRep').addEventListener('click',function(){
+  if(!STATE.report||!STATE.report.rows.length) return toast('Build the report first.',true);
+  var doc=pdfNew('l'); if(!doc) return;
+  var rep=STATE.report,book=STATE.book,d=rep.summary,period=periodLabel();
+  var W=doc.internal.pageSize.getWidth();
+
+  pdfBanner(doc,'Consolidated consignment report',period);
+  var y=34;
+  y=pdfKpis(doc,y,[
+    ['Consignments',String(d.count)],
+    ['Quantity billed',qty(d.qty)+' Qtl'],
+    ['Basic amount',inr(d.basic)],
+    ['Deductions',inr(d.less),PC.LESS],
+    ['Net payable',inr(d.net)],
+    ['Paid',inr(d.paid),PC.ADD],
+    ['Outstanding',inr(d.balance),PC.LESS]
+  ],17);
+  y+=9;
+
+  if(rep.groupBy!=='none'&&rep.groups.length){
+    y=pdfSectionTitle(doc,y,'Summary by '+rep.groupBy);
+    var gb=rep.groups.map(function(g){
+      return [g.key,String(g.count),qty(g.qty),inr(g.basic),inr(g.add),inr(g.less),inr(g.net),inr(g.paid),inr(g.balance)];
+    });
+    doc.autoTable(tableBase({
+      startY:y+2,
+      head:[[rep.groupBy.charAt(0).toUpperCase()+rep.groupBy.slice(1),'Trucks','Quantity','Basic','Additions','Deductions','Net payable','Paid','Balance']],
+      body:gb,
+      foot:[['Total',String(d.count),qty(d.qty),inr(d.basic),inr(d.add),inr(d.less),inr(d.net),inr(d.paid),inr(d.balance)]],
+      columnStyles:Object.assign({0:{cellWidth:60,fontStyle:'bold'}},moneyCols([1,2,3,4,5,6,7,8])),
+      didParseCell:function(x){if(x.section==='body'&&x.column.index===8)x.cell.styles.textColor=PC.LESS;},
+      didDrawPage:function(){pdfBanner(doc,'Consolidated consignment report',period);}
+    }));
+    y=doc.lastAutoTable.finalY+10;
+  }
+
+  if(y>doc.internal.pageSize.getHeight()-60){doc.addPage();pdfBanner(doc,'Consolidated consignment report',period);y=34;}
+  y=pdfSectionTitle(doc,y,'Consignment-wise');
+  var rb=rep.rows.map(function(c){
+    return [dmy(c.cons_date),c.consignment_no,c.vehicle_no,c.party_name||'—',c.commodity||'—',
+            qty(billedQty(c)),inr(c.rate),inr(c.basic_amount),inr(c.total_less),inr(c.net_payable),
+            inr(c.total_paid),inr(c.balance)];
+  });
+  doc.autoTable(tableBase({
+    startY:y+2,
+    head:[['Date','Consignment','Vehicle','Party','Commodity','Qty','Rate','Basic','Deductions','Net payable','Paid','Balance']],
+    body:rb,
+    foot:[['',rep.rows.length+' consignments','','','',qty(d.qty),'',inr(d.basic),inr(d.less),inr(d.net),inr(d.paid),inr(d.balance)]],
+    columnStyles:Object.assign({0:{cellWidth:18},1:{cellWidth:27,font:'courier',fontSize:6.6},
+      2:{cellWidth:24,font:'courier',fontSize:6.8},3:{cellWidth:'auto'},4:{cellWidth:26}},
+      moneyCols([5,6,7,8,9,10,11])),
+    didParseCell:function(x){
+      if(x.section==='body'&&x.column.index===8)x.cell.styles.textColor=PC.LESS;
+      if(x.section==='body'&&x.column.index===11)x.cell.styles.fontStyle='bold';
+    },
+    didDrawPage:function(){pdfBanner(doc,'Consolidated consignment report',period);}
+  }));
+  y=doc.lastAutoTable.finalY+10;
+
+  if(book&&book.heads.length){
+    if(y>doc.internal.pageSize.getHeight()-55){doc.addPage();pdfBanner(doc,'Consolidated consignment report',period);y=34;}
+    y=pdfSectionTitle(doc,y,'Where the money went');
+    var basic=d.basic||0;
+    var hb=book.heads.map(function(h){
+      return [h.head,h.nature,String(h.count),h.qty?qty(h.qty):'',inr(h.amount),
+              basic?(h.amount/basic*100).toFixed(2)+'%':'',inr(h.count?h.amount/h.count:0)];
+    });
+    doc.autoTable(tableBase({
+      startY:y+2,
+      head:[['Head','Type','Lines','Quantity','Amount','Share of basic','Average per line']],
+      body:hb,
+      columnStyles:Object.assign({0:{cellWidth:'auto',fontStyle:'bold'},1:{cellWidth:24,halign:'center',fontSize:6.8,textColor:PC.INK2}},
+        moneyCols([2,3,4,5,6])),
+      didParseCell:function(x){
+        if(x.section==='body'&&x.column.index===4){
+          var nat=hb[x.row.index][1];
+          x.cell.styles.textColor=nat==='ADD'?PC.ADD:nat==='PAYMENT'?[42,78,134]:PC.LESS;
+        }
+      },
+      didDrawPage:function(){pdfBanner(doc,'Consolidated consignment report',period);}
+    }));
+  }
+
+  pdfFooters(doc);
+  doc.save('Consignment report '+period.replace(/[^\w\- ]/g,'')+'.pdf');
+  toast('PDF downloaded');
+});
+
+/* ==========================================================================
+   MASTERS
+   ========================================================================== */
+var MASTER_FIELDS={
+  vehicle:[['vehicle_no','Vehicle number'],['owner_name','Owner'],['driver_name','Driver'],['phone','Phone'],['capacity','Capacity']],
+  party:[['party_name','Party name'],['party_type','Type'],['place','Place'],['phone','Phone'],['gstin','GSTIN']],
+  commodity:[['commodity','Commodity'],['default_unit','Default unit'],['default_rate','Default rate']],
+  head:[['head','Head'],['nature','Type (LESS / ADD / PAYMENT)'],['note','Note']]
+};
+$('masterTabs').addEventListener('click',function(ev){
+  var b=ev.target.closest('button[data-kind]'); if(!b) return;
+  STATE.masterKind=b.dataset.kind;
+  document.querySelectorAll('#masterTabs button').forEach(function(x){x.setAttribute('aria-pressed',String(x===b));});
+  loadMaster();
+});
+function loadMaster(){
+  var k=STATE.masterKind;
+  $('masterTitle').textContent={vehicle:'Vehicles',party:'Parties',commodity:'Commodities',head:'Heads'}[k];
+  $('masterForm').innerHTML='<div class="grid g4">'+MASTER_FIELDS[k].map(function(f){
+    return '<div><label>'+esc(f[1])+'</label><input data-mf="'+f[0]+'"></div>';}).join('')+
+    '</div><div class="row-actions" style="margin-top:12px"><button class="btn gold" id="btnMasterSave">Save</button></div>';
+  $('btnMasterSave').addEventListener('click',saveMasterRow);
+  busy(true);
+  api('listMaster',k).then(function(rows){
+    busy(false);
+    if(!rows.length){$('masterWrap').innerHTML='<div class="empty"><b>Nothing here yet</b>Add one above, or use the + button while entering a consignment.</div>';return;}
+    var cols=Object.keys(rows[0]).filter(function(c){return c!=='_row';});
+    var h='<table><thead><tr>'+cols.map(function(c){return '<th>'+esc(c.replace(/_/g,' '))+'</th>';}).join('')+'<th class="noprint"></th></tr></thead><tbody>';
+    rows.forEach(function(r){
+      h+='<tr>'+cols.map(function(c){return '<td>'+esc(r[c])+'</td>';}).join('')+
+        '<td class="noprint"><button class="mini x" data-mdel="'+esc(r[cols[0]])+'">Disable</button></td></tr>';
+    });
+    $('masterWrap').innerHTML=h+'</tbody></table>';
+  }).catch(fail);
+}
+function saveMasterRow(){
+  var obj={};
+  document.querySelectorAll('#masterForm [data-mf]').forEach(function(el){obj[el.dataset.mf]=el.value;});
+  busy(true);
+  api('saveMaster',STATE.masterKind,obj).then(function(){
+    busy(false);toast('Saved');loadMaster();refreshBoot();
+  }).catch(fail);
+}
+document.addEventListener('click',function(ev){
+  var b=ev.target.closest('[data-mdel]'); if(!b) return;
+  if(!confirm('Disable "'+b.dataset.mdel+'"? Past consignments keep it.')) return;
+  busy(true);
+  api('deleteMaster',STATE.masterKind,b.dataset.mdel).then(function(){busy(false);toast('Disabled');loadMaster();refreshBoot();}).catch(fail);
+});
+document.querySelector('#nav button[data-view=masters]').addEventListener('click',function(){
+  if(!$('masterWrap').innerHTML.trim()) loadMaster();
+});
+
+boot();
+</script>
+</body>
+</html>
